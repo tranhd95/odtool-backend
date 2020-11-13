@@ -10,6 +10,7 @@ class Dataset(BaseModel):
     hasSplits: bool
     isValid: bool
     errors: List[str]
+    trainSize: int
 
 
 class Model(BaseModel):

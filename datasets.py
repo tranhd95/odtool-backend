@@ -1,4 +1,5 @@
 import os
+import json
 from typing import List, Tuple
 from data_models import Dataset
 
@@ -14,6 +15,7 @@ def get_datasets(directory: str = "datasets") -> List[Dataset]:
         has_splits = {"test.json", "train.json", "validation.json"}.issubset(
             set(dataset_contents)
         )
+        train_size = get_train_size(dataset_dir) if has_splits else 0
 
         try:
             categories = get_categories(dataset_dir)
@@ -56,6 +58,7 @@ def get_datasets(directory: str = "datasets") -> List[Dataset]:
             hasSplits=has_splits,
             isValid=is_valid,
             errors=errors,
+            trainSize=train_size,
         )
         datasets.append(dataset)
     return datasets
@@ -73,3 +76,9 @@ def get_categories(directory: str) -> List[Tuple[int, str]]:
 
 def get_images(directory: str) -> List[str]:
     return os.listdir(os.path.join(directory, "images"))
+
+
+def get_train_size(directory: str) -> int:
+    with open(os.path.join(directory, "train.json"), "r") as f:
+        dct = json.load(f)
+    return len(dct)

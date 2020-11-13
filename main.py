@@ -2,6 +2,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from datasets import get_datasets
 from models import get_models
+import detectron2
+
 
 app = FastAPI()
 
@@ -23,3 +25,4 @@ def send_datasets():
 @app.get("/models")
 def send_models():
     return get_models()
+
