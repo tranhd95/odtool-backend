@@ -20,3 +20,17 @@ class Model(BaseModel):
     dataset: str
     inferenceTime: float
     details: str
+
+
+class Parameters(BaseModel):
+    epochs: int
+    batchSize: int
+    checkpointPeriod: int
+    learningRate: float
+    saveBestWeights: bool
+
+
+class Config(BaseModel):
+    id: str
+    name: str
+    parameters: Parameters
