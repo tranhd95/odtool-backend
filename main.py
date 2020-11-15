@@ -79,8 +79,8 @@ async def random_predict(params: PredictParams):
 @app.get("/image")
 async def send_image(index: int):
     img = benchmark.imgs[index]
-    res, im_jpg = cv2.imencode(".jpg", img)  # TODO various extension
-    return StreamingResponse(io.BytesIO(im_jpg.tobytes()), media_type="image/jpg")
+    res, im_jpg = cv2.imencode(benchmark.img_extension, img)
+    return StreamingResponse(io.BytesIO(im_jpg.tobytes()), media_type=f"image/{benchmark.img_extension}")
 
 
 def start_training():

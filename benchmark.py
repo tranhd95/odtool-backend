@@ -40,6 +40,7 @@ class Benchmark:
         self.test_dicts = None
         self.built_configs = []
         self.imgs = []
+        self.img_extension = None
 
     @property
     def isReady(self):
@@ -122,7 +123,9 @@ class Benchmark:
     def random_predict(self, threshold: float):
         self.imgs = []
         random_dict: DatasetDict = random.choice(self.test_dicts)
-        random_cv2img = cv2.imread(random_dict["file_name"])
+        img_path = random_dict["file_name"]
+        root, self.img_extension = os.path.splitext(img_path)
+        random_cv2img = cv2.imread(img_path)
         metadata = MetadataCatalog.get(self.dataset.name + "_test")
         visualizer_gt = Visualizer(
             random_cv2img[:, :, ::-1], metadata=metadata, scale=1
