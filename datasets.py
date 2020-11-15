@@ -1,4 +1,5 @@
 import os
+import glob
 import json
 from typing import List, Tuple
 from data_models import Dataset
@@ -26,15 +27,8 @@ def get_datasets(directory: str = "datasets") -> List[Dataset]:
             categories = []
             is_valid = False
 
-        try:
-            images = get_images(dataset_dir)
-        except FileNotFoundError:
-            errors.append("Images folder not found. Please provide images folder.")
-            images = []
-            is_valid = False
-
+        images_count = get_number_of_images(dataset_dir)
         categories_count = len(categories)
-        images_count = len(images)
 
         if not has_all and not has_splits:
             errors.append(
@@ -74,9 +68,12 @@ def get_categories(dataset_name: str) -> List[Tuple[int, str]]:
     return sorted(rows, key=lambda tup: tup[0])
 
 
-def get_images(directory: str) -> List[str]:
-    # TODO allow subdirectories
-    return os.listdir(os.path.join(directory, "images"))
+def get_number_of_images(dataset_path: str) -> List[str]:
+    count = 0
+    for path in glob.iglob(f"{dataset_path}/images/**", recursive=True):
+        if os.path.isfile(path):
+            count += 1
+    return count
 
 
 def get_train_size(directory: str) -> int:

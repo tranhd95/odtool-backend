@@ -106,8 +106,7 @@ class Benchmark:
         cfg.MODEL.MASK_ON = False
         cfg.SOLVER.IMS_PER_BATCH = params.batchSize
         one_epoch = int(self.dataset.trainSize / params.batchSize)
-        # cfg.SOLVER.MAX_ITER = params.epochs * one_epoch
-        cfg.SOLVER.MAX_ITER = 5
+        cfg.SOLVER.MAX_ITER = params.epochs * one_epoch
         cfg.SOLVER.BASE_LR = params.learningRate
         cfg.SOLVER.CHECKPOINT_PERIOD = params.checkpointPeriod
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
