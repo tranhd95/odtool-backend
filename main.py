@@ -1,14 +1,18 @@
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from starlette.responses import StreamingResponse
 from datasets import get_datasets
 from models import get_models
-from data_models import Dataset, Config
+from data_models import Dataset, Config, PredictParams
+from benchmark import Benchmark
+import sys
+import io
+import cv2
 
-
+benchmark = Benchmark()
+out = io.StringIO()
 app = FastAPI()
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,21 +34,45 @@ async def send_models():
 
 @app.post("/dataset")
 async def set_dataset(dataset: Dataset):
-    # TODO set dataset to the benchmark tool
+    benchmark.set_dataset(dataset)
     return {"Response": "Dataset sent successfully."}
 
 
 @app.post("/configs")
 async def receive_configs(configs: List[Config]):
-    # TODO set configs to the benchmark tool
+    benchmark.set_configs(configs)
     return {"Response": "Configs sent successfully."}
 
 
 @app.post("/train")
-async def start_training():
-    pass
+async def heavy_task(bg_tasks: BackgroundTasks):
+    if benchmark.isReady:
+        sys.stdout = out
+        bg_tasks.add_task(start_training)
+        return {"Response": "Training..."}
+    else:
+        raise HTTPException(
+            status_code=405,
+            detail="Cannot start training without selected dataset and models.",
+        )
 
 
 @app.get("/console")
 async def send_console_output():
-    pass
+    return {"stdout": out.getvalue(), "trainingStatus": benchmark.training_status}
+
+
+@app.post("/predict")
+async def random_predict(params: PredictParams):
+    return {"Response": benchmark.random_predict(params.threshold)}
+
+
+@app.get("/image")
+async def send_image(index: int):
+    img = benchmark.imgs[index]
+    res, im_jpg = cv2.imencode(".jpg", img)  # TODO various extension
+    return StreamingResponse(io.BytesIO(im_jpg.tobytes()), media_type="image/jpg")
+
+
+def start_training():
+    benchmark.start_training()

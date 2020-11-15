@@ -64,17 +64,18 @@ def get_datasets(directory: str = "datasets") -> List[Dataset]:
     return datasets
 
 
-def get_categories(directory: str) -> List[Tuple[int, str]]:
+def get_categories(dataset_name: str) -> List[Tuple[int, str]]:
     rows = []
-    with open(os.path.join(directory, "category_names.csv"), "r") as csv:
+    with open(os.path.join(dataset_name, "category_names.csv"), "r") as csv:
         for row in csv.readlines():
             values = row.split(",")
-            tpl = (int(values[0]), values[1])
+            tpl = (int(values[0]), values[1].strip())
             rows.append(tpl)
     return sorted(rows, key=lambda tup: tup[0])
 
 
 def get_images(directory: str) -> List[str]:
+    # TODO allow subdirectories
     return os.listdir(os.path.join(directory, "images"))
 
 
