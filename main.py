@@ -6,6 +6,8 @@ from datasets import get_datasets
 from models import get_models
 from data_models import Dataset, Config, PredictParams
 from benchmark import Benchmark
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 import sys
 import io
 import cv2
@@ -60,6 +62,13 @@ async def heavy_task(bg_tasks: BackgroundTasks):
 @app.get("/console")
 async def send_console_output():
     return {"stdout": out.getvalue(), "trainingStatus": benchmark.training_status}
+
+
+@app.get("/evaluate")
+async def evaluate():
+    sys.stdout = sys.__stdout__
+    json_compatible_item_data = jsonable_encoder(benchmark.evaluate())
+    return JSONResponse(content=json_compatible_item_data)
 
 
 @app.post("/predict")

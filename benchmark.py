@@ -4,7 +4,9 @@ import time
 from typing import List
 
 import torch
+from detectron2.data.datasets.coco import convert_to_coco_json
 from detectron2.engine import HookBase, DefaultTrainer, hooks, DefaultPredictor
+from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.utils import comm
 from fvcore.nn.precise_bn import get_bn_modules
 from data_models import Dataset, Config, DatasetDict, TrainingState
@@ -14,12 +16,14 @@ from detectron2.data import (
     DatasetCatalog,
     MetadataCatalog,
     build_detection_train_loader,
+    build_detection_test_loader,
 )
 from detectron2.config import get_cfg
 from detectron2 import model_zoo
 import random
 import cv2
 from detectron2.utils.visualizer import Visualizer
+from math import isnan
 
 
 class Benchmark:
@@ -80,13 +84,14 @@ class Benchmark:
         self.training_status = TrainingState.evaluating
         for built_config in self.built_configs:
             built_config.MODEL.WEIGHTS = os.path.join(
-                built_config.OUTPUT_DIR, "model_final.pth"
+                built_config.OUTPUT_DIR, "model_final.pth"  # TODO choose the best one
             )
         # TODO evaluate
 
     def _build_model_config(self, model_config: Config):
         params = model_config.parameters
         cfg = get_cfg()
+        cfg.MODEL_NAME = model_config.name
         cfg.merge_from_file(model_zoo.get_config_file(model_config.id))
         cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(model_config.id)
         timestamp = time.strftime("%y%m%d_%H_%M_%S")
@@ -102,7 +107,7 @@ class Benchmark:
         cfg.SOLVER.IMS_PER_BATCH = params.batchSize
         one_epoch = int(self.dataset.trainSize / params.batchSize)
         # cfg.SOLVER.MAX_ITER = params.epochs * one_epoch
-        cfg.SOLVER.MAX_ITER = 20
+        cfg.SOLVER.MAX_ITER = 5
         cfg.SOLVER.BASE_LR = params.learningRate
         cfg.SOLVER.CHECKPOINT_PERIOD = params.checkpointPeriod
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
@@ -139,6 +144,40 @@ class Benchmark:
             )
             self.imgs.append(vis_pred.get_image()[:, :, ::-1])
         return random_dict["file_name"]
+
+    def evaluate(self):
+        evaluation = dict({"headers": [], "items": []})
+        for config in self.built_configs:
+            print(config.OUTPUT_DIR)
+            config.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
+            config.MODEL.RETINANET.SCORE_THRESH_TEST = 0.05
+            predictor = DefaultPredictor(config)
+            coco_path = os.path.join(
+                config.OUTPUT_DIR, f"{self.dataset.name}_coco_format.json"
+            )
+            test_split = f"{self.dataset.name}_test"
+            convert_to_coco_json(test_split, coco_path, False)
+            evaluator = COCOEvaluator(
+                test_split, config, False, output_dir=config.OUTPUT_DIR
+            )
+            test_loader = build_detection_test_loader(config, test_split)
+            metrics_dict = inference_on_dataset(
+                predictor.model, test_loader, evaluator
+            )["bbox"]
+            for m in metrics_dict:
+                if isnan(metrics_dict[m]):
+                    metrics_dict[m] = -1
+                else:
+                    metrics_dict[m] = round(metrics_dict[m], 2)
+            metrics_dict["Model"] = config.MODEL_NAME
+            evaluation["items"].append(metrics_dict)
+        evaluation["headers"].append(
+            {"text": "Model", "value": "Model", "sortable": False, "align": "start"}
+        )
+        for m in evaluation["items"][0]:
+            if m != "Model":
+                evaluation["headers"].append({"text": m, "value": m})
+        return evaluation
 
 
 def load_dicts(dataset_name: str, json_name: str) -> List[DatasetDict]:
