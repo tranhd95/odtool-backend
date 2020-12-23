@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import torch
 from detectron2.data.datasets.coco import convert_to_coco_json
@@ -24,6 +24,7 @@ import random
 import cv2
 from detectron2.utils.visualizer import Visualizer
 from math import isnan
+from numpy import argmin
 
 
 class Benchmark:
@@ -104,13 +105,27 @@ class Benchmark:
             self._train(config)
         self.training_status = TrainingState.evaluating
         for built_config in self.built_configs:
-            built_config.MODEL.WEIGHTS = os.path.join(
-                built_config.OUTPUT_DIR, "model_final.pth"  # TODO choose the best one
-            )
+            if built_config.EVALUATE_BEST_WEIGHTS:
+                built_config.MODEL.WEIGHTS = self._find_best_weights(
+                    built_config.OUTPUT_DIR
+                )
+            else:
+                built_config.MODEL.WEIGHTS = os.path.join(
+                    built_config.OUTPUT_DIR,
+                    "model_final.pth",
+                )
+
+    def _train(self, model_config: Config):
+        cfg = self._build_model_config(model_config)
+        self.built_configs.append(cfg)
+        trainer = Trainer(cfg)
+        trainer.resume_or_load(resume=False)
+        trainer.train()
 
     def _build_model_config(self, model_config: Config):
         params = model_config.parameters
         cfg = get_cfg()
+        cfg.EVALUATE_BEST_WEIGHTS = model_config.parameters.saveBestWeights
         cfg.MODEL_NAME = model_config.name
         cfg.merge_from_file(model_zoo.get_config_file(model_config.id))
         cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(model_config.id)
@@ -132,12 +147,17 @@ class Benchmark:
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
         return cfg
 
-    def _train(self, model_config: Config):
-        cfg = self._build_model_config(model_config)
-        self.built_configs.append(cfg)
-        trainer = Trainer(cfg)
-        trainer.resume_or_load(resume=False)
-        trainer.train()
+    def _find_best_weights(self, output_dir: str):
+        metrics = load_metrics_json(os.path.join(output_dir, "metrics.json"))
+        val_losses = [
+            line["total_val_loss"] for line in metrics if "total_val_loss" in line
+        ]
+        index = argmin(val_losses)
+        if index == len(val_losses) - 1:
+            best_model = "model_final.pth"
+        else:
+            best_model = f"model_{str(metrics[index]['iteration']).zfill(7)}.pth"
+        return os.path.join(output_dir, best_model)
 
     def random_predict(self, threshold: float):
         self.imgs = []
@@ -323,3 +343,11 @@ class Trainer(DefaultTrainer):
                 )
             )  # <- Overwriten here
         return ret
+
+
+def load_metrics_json(json_path) -> List[Dict]:
+    lines = []
+    with open(json_path, "r") as f:
+        for line in f:
+            lines.append(json.loads(line))
+    return lines
