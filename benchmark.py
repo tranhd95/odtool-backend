@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from typing import List
+from typing import List, Tuple
 
 import torch
 from detectron2.data.datasets.coco import convert_to_coco_json
@@ -49,20 +49,40 @@ class Benchmark:
     def set_dataset(self, dataset: Dataset):
         self.dataset = dataset
         if dataset.splitRatio:
-            # TODO Split all.json according to given ratios
-            pass
-        self._register_dataset()
-        self._load_test_dicts()
+            train, test, val = self._split_dataset(dataset)
+            self._register_dataset(train, test, val)
+            self.test_dicts = test
+        else:
+            self._register_dataset()
+            self._load_test_dicts()
 
-    def _register_dataset(self, *dicts):
+    def _split_dataset(
+        self, dataset: Dataset
+    ) -> Tuple[List[DatasetDict], List[DatasetDict], List[DatasetDict]]:
+        all_dict = load_dicts(dataset.name, "all")
+        random.shuffle(all_dict)
+        ratio = dataset.splitRatio
+        split_idx1 = int(dataset.size / 100 * ratio[0])
+        split_idx2 = int(dataset.size / 100 * (ratio[0] + ratio[1]))
+        train = all_dict[:split_idx1]
+        test = all_dict[split_idx1:split_idx2]
+        val = all_dict[split_idx2:]
+        return train, test, val
+
+    def _register_dataset(self, train=None, test=None, val=None):
         DatasetCatalog.clear()
         MetadataCatalog.clear()
         category_tuples = get_categories(os.path.join("datasets", self.dataset.name))
         category_names = [tup[1] for tup in category_tuples]
         self.num_of_categories = len(category_names)
-        if dicts:
-            # TODO register auto split
-            pass
+        if train and test and val:
+            for list_dict, split in zip(
+                [train, test, val], ["train", "test", "validation"]
+            ):
+                split_name = f"{self.dataset.name}_{split}"
+                self.split_names[split] = split_name
+                DatasetCatalog.register(split_name, lambda: list_dict)
+                MetadataCatalog.get(split_name).set(thing_classes=category_names)
         else:
             for split in ["train", "test", "validation"]:
                 split_name = f"{self.dataset.name}_{split}"
@@ -73,7 +93,7 @@ class Benchmark:
                 MetadataCatalog.get(split_name).set(thing_classes=category_names)
 
     def _load_test_dicts(self):
-        self.test_dicts = load_dicts(self.dataset.name, "train")
+        self.test_dicts = load_dicts(self.dataset.name, "test")
 
     def set_configs(self, configs: List[Config]):
         self.configs = configs
