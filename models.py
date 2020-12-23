@@ -3,21 +3,21 @@ from data_models import Model
 
 _MODELS: List[Model] = [
     Model(
-        id="COCO-Detection/faster_rcnn_R_101_FPN_3x.yaml",
+        id="COCO-Detection/faster_rcnn_R_50_C4_3x.yaml",
         prefix="COCO-Detection",
         name="Faster R-CNN",
-        ap=42.0,
+        ap=35.7,
         dataset="COCO",
-        inferenceTime=0.051,
-        details="ResNet 101 + FPN",
+        inferenceTime=0.102,
+        details="ResNet 50",
     ),
     Model(
-        id="COCO-Detection/retinanet_R_101_FPN_3x.yaml",
+        id="COCO-Detection/retinanet_R_50_FPN_3x.yaml",
         prefix="COCO-Detection",
         name="RetinaNet",
-        ap=40.4,
+        ap=38.7,
         dataset="COCO",
-        inferenceTime=0.054,
+        inferenceTime=0.041,
         details="ResNet 101 + FPN",
     ),
     Model(

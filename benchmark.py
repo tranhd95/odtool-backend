@@ -87,7 +87,6 @@ class Benchmark:
             built_config.MODEL.WEIGHTS = os.path.join(
                 built_config.OUTPUT_DIR, "model_final.pth"  # TODO choose the best one
             )
-        # TODO evaluate
 
     def _build_model_config(self, model_config: Config):
         params = model_config.parameters
@@ -103,7 +102,7 @@ class Benchmark:
         cfg.DATASETS.VAL = (self.split_names["validation"],)
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_of_categories
         cfg.MODEL.RETINANET.NUM_CLASSES = self.num_of_categories
-        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128
+        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 64
         cfg.MODEL.MASK_ON = False
         cfg.SOLVER.IMS_PER_BATCH = params.batchSize
         one_epoch = int(self.dataset.trainSize / params.batchSize)
@@ -150,7 +149,6 @@ class Benchmark:
     def evaluate(self):
         evaluation = dict({"headers": [], "items": []})
         for config in self.built_configs:
-            print(config.OUTPUT_DIR)
             config.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
             config.MODEL.RETINANET.SCORE_THRESH_TEST = 0.05
             predictor = DefaultPredictor(config)
