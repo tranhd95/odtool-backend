@@ -1,5 +1,5 @@
 from typing import List
-from data_models import Model
+from datamodels import Model
 
 _MODELS: List[Model] = [
     Model(

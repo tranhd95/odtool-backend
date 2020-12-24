@@ -4,11 +4,11 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from starlette.responses import StreamingResponse
 from datasets import get_datasets
 from models import get_models
-from data_models import Dataset, Config, PredictParams
+from datamodels import Dataset, Config, PredictParams
+import sys
 from benchmark import Benchmark
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-import sys
 import io
 import cv2
 
@@ -80,7 +80,14 @@ async def random_predict(params: PredictParams):
 async def send_image(index: int):
     img = benchmark.imgs[index]
     res, im_jpg = cv2.imencode(benchmark.img_extension, img)
-    return StreamingResponse(io.BytesIO(im_jpg.tobytes()), media_type=f"image/{benchmark.img_extension}")
+    return StreamingResponse(
+        io.BytesIO(im_jpg.tobytes()), media_type=f"image/{benchmark.img_extension}"
+    )
+
+
+@app.get("/weights/{model_id}")
+async def send_weights(model_id):
+    return benchmark.send_weights(model_id)
 
 
 def start_training():

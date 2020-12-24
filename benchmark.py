@@ -9,7 +9,7 @@ from detectron2.engine import HookBase, DefaultTrainer, hooks, DefaultPredictor
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.utils import comm
 from fvcore.nn.precise_bn import get_bn_modules
-from data_models import Dataset, Config, DatasetDict, TrainingState
+from datamodels import Dataset, Config, DatasetDict, TrainingState
 from datasets import get_categories
 from detectron2.structures import BoxMode
 from detectron2.data import (
@@ -25,7 +25,7 @@ import cv2
 from detectron2.utils.visualizer import Visualizer
 from math import isnan
 from numpy import argmin
-
+from fastapi.responses import FileResponse
 
 class Benchmark:
     """
@@ -141,7 +141,8 @@ class Benchmark:
         cfg.MODEL.MASK_ON = False
         cfg.SOLVER.IMS_PER_BATCH = params.batchSize
         one_epoch = int(self.dataset.trainSize / params.batchSize)
-        cfg.SOLVER.MAX_ITER = params.epochs * one_epoch
+        # cfg.SOLVER.MAX_ITER = params.epochs * one_epoch
+        cfg.SOLVER.MAX_ITER = 5
         cfg.SOLVER.BASE_LR = params.learningRate
         cfg.SOLVER.CHECKPOINT_PERIOD = params.checkpointPeriod
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
@@ -218,6 +219,10 @@ class Benchmark:
             if m != "Model":
                 evaluation["headers"].append({"text": m, "value": m})
         return evaluation
+
+    def send_weights(self, model_id):
+        cfg = self.built_configs[int(model_id)]
+        return FileResponse(cfg.MODEL.WEIGHTS, filename=cfg.MODEL_NAME.replace(" ", "_")+".pth", media_type="application/pth")
 
 
 def load_dicts(dataset_name: str, json_name: str) -> List[DatasetDict]:

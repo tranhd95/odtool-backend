@@ -2,7 +2,7 @@ import os
 import glob
 import json
 from typing import List, Tuple
-from data_models import Dataset
+from datamodels import Dataset
 
 
 def get_datasets(directory: str = "datasets") -> List[Dataset]:
@@ -68,7 +68,7 @@ def get_categories(dataset_name: str) -> List[Tuple[int, str]]:
     return sorted(rows, key=lambda tup: tup[0])
 
 
-def get_number_of_images(dataset_path: str) -> List[str]:
+def get_number_of_images(dataset_path: str) -> str:
     count = 0
     for path in glob.iglob(f"{dataset_path}/images/**", recursive=True):
         if os.path.isfile(path):
