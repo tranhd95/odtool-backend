@@ -27,6 +27,7 @@ from math import isnan
 from numpy import argmin
 from fastapi.responses import FileResponse
 
+
 class Benchmark:
     """
     Main benchmarking tool class
@@ -58,7 +59,7 @@ class Benchmark:
             self._load_test_dicts()
 
     def _split_dataset(
-        self, dataset: Dataset
+            self, dataset: Dataset
     ) -> Tuple[List[DatasetDict], List[DatasetDict], List[DatasetDict]]:
         all_dict = load_dicts(dataset.name, "all")
         random.shuffle(all_dict)
@@ -78,7 +79,7 @@ class Benchmark:
         self.num_of_categories = len(category_names)
         if train and test and val:
             for list_dict, split in zip(
-                [train, test, val], ["train", "test", "validation"]
+                    [train, test, val], ["train", "test", "validation"]
             ):
                 split_name = f"{self.dataset.name}_{split}"
                 self.split_names[split] = split_name
@@ -222,7 +223,8 @@ class Benchmark:
 
     def send_weights(self, model_id):
         cfg = self.built_configs[int(model_id)]
-        return FileResponse(cfg.MODEL.WEIGHTS, filename=cfg.MODEL_NAME.replace(" ", "_")+".pth", media_type="application/pth")
+        return FileResponse(cfg.MODEL.WEIGHTS, filename=cfg.MODEL_NAME.replace(" ", "_") + ".pth",
+                            media_type="application/pth")
 
 
 def load_dicts(dataset_name: str, json_name: str) -> List[DatasetDict]:
