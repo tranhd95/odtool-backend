@@ -73,7 +73,7 @@ async def heavy_task(bg_tasks: BackgroundTasks):
         bg_tasks: BackgroundTasks class for setting background tasks (see FastAPI docs)
     Returns: Successful response it it went ok.
     """
-    if benchmark.isReady:
+    if benchmark.is_ready:
         sys.stdout = out
         bg_tasks.add_task(start_training)
         return {"Response": "Training..."}

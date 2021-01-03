@@ -30,7 +30,11 @@ from fastapi.responses import FileResponse
 
 class Benchmark:
     """
-    Main benchmarking tool class
+    Handles the main logic of the app:
+    - Selection of dataset, models, and its parameters.
+    - Initiate the training process.
+    - Evaluates the trained models.
+    - Exports the trained weights.
     """
 
     def __init__(self):
@@ -45,10 +49,18 @@ class Benchmark:
         self.img_extension = None
 
     @property
-    def isReady(self):
+    def is_ready(self):
+        """
+        Returns: is ready for training initialization.
+        """
         return len(self.configs) > 0 and self.dataset
 
     def set_dataset(self, dataset: Dataset):
+        """
+        Register the given dataset. If split ratio is defined, split the datasets by the ratio and register the dataset.
+        Args:
+            dataset: to be registered
+        """
         self.dataset = dataset
         if dataset.splitRatio:
             train, test, val = self._split_dataset(dataset)
@@ -58,9 +70,16 @@ class Benchmark:
             self._register_dataset()
             self._load_test_dicts()
 
+    @staticmethod
     def _split_dataset(
-            self, dataset: Dataset
+            dataset: Dataset
     ) -> Tuple[List[DatasetDict], List[DatasetDict], List[DatasetDict]]:
+        """
+        Splits the dataset by given ratio
+        Args:
+            dataset: to be split
+        Returns: training, testing and validation splits
+        """
         all_dict = load_dicts(dataset.name, "all")
         random.shuffle(all_dict)
         ratio = dataset.splitRatio
@@ -72,6 +91,13 @@ class Benchmark:
         return train, test, val
 
     def _register_dataset(self, train=None, test=None, val=None):
+        """
+        Registers each split to Detectron2's dataset catalog
+        Args:
+            train: split
+            test: split
+            val: split
+        """
         DatasetCatalog.clear()
         MetadataCatalog.clear()
         category_tuples = get_categories(os.path.join("datasets", self.dataset.name))
@@ -95,12 +121,21 @@ class Benchmark:
                 MetadataCatalog.get(split_name).set(thing_classes=category_names)
 
     def _load_test_dicts(self):
+        """
+        Loads test dicts to the object for later inference.
+        """
         self.test_dicts = load_dicts(self.dataset.name, "test")
 
     def set_configs(self, configs: List[Config]):
+        """
+        Sets model configs to the object.
+        """
         self.configs = configs
 
     def start_training(self):
+        """
+        Initiates training process.
+        """
         self.training_status = TrainingState.training
         for config in self.configs:
             self._train(config)
@@ -117,6 +152,11 @@ class Benchmark:
                 )
 
     def _train(self, model_config: Config):
+        """
+        Trains a model defined by the argument.
+        Args:
+            model_config: to be trained
+        """
         cfg = self._build_model_config(model_config)
         self.built_configs.append(cfg)
         trainer = Trainer(cfg)
@@ -124,6 +164,12 @@ class Benchmark:
         trainer.train()
 
     def _build_model_config(self, model_config: Config):
+        """
+        Builds Detectron2's model config according to given model config
+        Args:
+            model_config:
+        Returns: the built Detectron2's config
+        """
         params = model_config.parameters
         cfg = get_cfg()
         cfg.EVALUATE_BEST_WEIGHTS = model_config.parameters.saveBestWeights
@@ -138,18 +184,23 @@ class Benchmark:
         cfg.DATASETS.VAL = (self.split_names["validation"],)
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_of_categories
         cfg.MODEL.RETINANET.NUM_CLASSES = self.num_of_categories
-        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 64
         cfg.MODEL.MASK_ON = False
         cfg.SOLVER.IMS_PER_BATCH = params.batchSize
         one_epoch = int(self.dataset.trainSize / params.batchSize)
         cfg.SOLVER.MAX_ITER = params.epochs * one_epoch
-        # cfg.SOLVER.MAX_ITER = 5
         cfg.SOLVER.BASE_LR = params.learningRate
         cfg.SOLVER.CHECKPOINT_PERIOD = params.checkpointPeriod
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
         return cfg
 
-    def _find_best_weights(self, output_dir: str):
+    @staticmethod
+    def _find_best_weights(output_dir: str):
+        """
+        Finds the best weights w.r.t. values of validation loss.
+        Args:
+            output_dir: to be scanned
+        Returns: the path to the best weights
+        """
         metrics = load_metrics_json(os.path.join(output_dir, "metrics.json"))
         val_losses = [
             line["total_val_loss"] for line in metrics if "total_val_loss" in line
@@ -162,6 +213,12 @@ class Benchmark:
         return os.path.join(output_dir, best_model)
 
     def random_predict(self, threshold: float):
+        """
+        Randomly selects a test image and run inference on it with every trained model.
+        Args:
+            threshold: If prediction's score is higher than threshold, it is true positive
+        Returns: the chosen image's path
+        """
         self.imgs = []
         random_dict: DatasetDict = random.choice(self.test_dicts)
         img_path = random_dict["file_name"]
@@ -189,6 +246,10 @@ class Benchmark:
         return random_dict["file_name"]
 
     def evaluate(self):
+        """
+        Initiates evaluation process of trained models.
+        Returns: the evaluation results.
+        """
         evaluation = dict({"headers": [], "items": []})
         for config in self.built_configs:
             config.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
@@ -353,6 +414,12 @@ class Trainer(DefaultTrainer):
 
 
 def load_metrics_json(json_path) -> List[Dict]:
+    """
+    Loads metrics.json to list of dictionaries
+    Args:
+        json_path: to metrics.json
+    Returns: list of dictionaries
+    """
     lines = []
     with open(json_path, "r") as f:
         for line in f:
