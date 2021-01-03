@@ -6,6 +6,12 @@ from datamodels import Dataset
 
 
 def get_datasets(directory: str = "datasets") -> List[Dataset]:
+    """
+    Scans the datasets folder for any available datasets.
+    Args:
+        directory: Path to datasets directory
+    Returns: List of datasets.
+    """
     datasets: List[Dataset] = []
     dataset_directories = [p.path for p in os.scandir(directory) if p.is_dir()]
     for dataset_dir in dataset_directories:
@@ -59,6 +65,11 @@ def get_datasets(directory: str = "datasets") -> List[Dataset]:
 
 
 def get_categories(dataset_name: str) -> List[Tuple[int, str]]:
+    """
+    Args:
+        dataset_name: dataset's name
+    Returns: List of category tuples (id, category_name) of the given dataset.
+    """
     rows = []
     with open(os.path.join(dataset_name, "category_names.csv"), "r") as csv:
         for row in csv.readlines():
@@ -69,6 +80,11 @@ def get_categories(dataset_name: str) -> List[Tuple[int, str]]:
 
 
 def get_number_of_images(dataset_path: str) -> str:
+    """
+    Args:
+        dataset_path: path to a given dataset
+    Returns: the total number of images of a given dataset.
+    """
     count = 0
     for path in glob.iglob(f"{dataset_path}/images/**", recursive=True):
         if os.path.isfile(path):
@@ -76,7 +92,12 @@ def get_number_of_images(dataset_path: str) -> str:
     return count
 
 
-def get_train_size(directory: str) -> int:
-    with open(os.path.join(directory, "train.json"), "r") as f:
+def get_train_size(dataset_path: str) -> int:
+    """
+    Args:
+        dataset_path: to a given dataset
+    Returns: the training size of a given dataset specified in train.json
+    """
+    with open(os.path.join(dataset_path, "train.json"), "r") as f:
         dct = json.load(f)
     return len(dct)
