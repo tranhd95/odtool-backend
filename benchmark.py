@@ -38,6 +38,9 @@ class Benchmark:
     """
 
     def __init__(self):
+        self.initialize_state()
+
+    def initialize_state(self):
         self.training_status = TrainingState.beforeTraining
         self.dataset = None
         self.configs = None

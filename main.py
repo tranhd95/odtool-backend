@@ -145,3 +145,13 @@ async def send_weights(index):
     Returns: .pth file with weights
     """
     return benchmark.send_weights(index)
+
+
+@app.post("/restart")
+def restart_session():
+    """
+    Restarts the session for another training
+    Returns: Successful response if it went ok.
+    """
+    benchmark.initialize_state()
+    return {"Response": "OK"}
